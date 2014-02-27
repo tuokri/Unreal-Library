@@ -380,6 +380,12 @@ namespace UELib
                 XCOM_EU,
 
                 /// <summary>
+                /// 846/181
+                /// </summary>
+                [Build( 846, 181 )]
+                DeadPool,
+
+                /// <summary>
                 /// 860/004
                 /// </summary>
                 [Build( 860, 4 )]
@@ -671,6 +677,12 @@ namespace UELib
 
             if( pkg.Version >= 249 )
             {
+#if DEADPOOL
+                if( pkg.Build == GameBuild.BuildName.DeadPool )
+                {
+                    stream.Skip( 20 );
+                }
+#endif
 #if BIOSHOCK
                 if( pkg.Build == GameBuild.BuildName.Bioshock_Infinite )
                 {

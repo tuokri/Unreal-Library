@@ -151,9 +151,23 @@ namespace UELib
             System.Diagnostics.Debug.Assert( size < 1000000, "Dangerous string size detected! IT'S OVER 9000 THOUSAND!" );
             if( unfixedSize > 0 ) // ANSI	 	
             {
-                var strBytes = new byte[size - 1];
-                Read( strBytes, 0, size - 1 );
-                ++ BaseStream.Position; // null
+                var length = size - 1;
+#if DEADPOOL
+                if( _UnrealStream.Package.Build == UnrealPackage.GameBuild.BuildName.DeadPool )
+                {
+                    length += 1;
+                }
+#endif
+                var strBytes = new byte[length];
+                Read( strBytes, 0, length );
+#if DEADPOOL
+                if( _UnrealStream.Package.Build != UnrealPackage.GameBuild.BuildName.DeadPool )
+                {
+#endif
+                    ++ BaseStream.Position; // null
+#if DEADPOOL
+                }
+#endif             
                 if( _MyEncoding == Encoding.BigEndianUnicode )
                 {
                     Array.Reverse( strBytes );
@@ -166,9 +180,23 @@ namespace UELib
 
             if( unfixedSize < 0 ) // UNICODE
             {
-                var strBytes = new byte[(size * 2) - 2];
-                Read( strBytes, 0, (size * 2) - 2 );
-                BaseStream.Position += 2; // null
+                var length = size*2 - 2;
+#if DEADPOOL
+                if( _UnrealStream.Package.Build == UnrealPackage.GameBuild.BuildName.DeadPool )
+                {
+                    length += 2;
+                }
+#endif
+                var strBytes = new byte[length];
+                Read( strBytes, 0, length );
+#if DEADPOOL
+                if( _UnrealStream.Package.Build != UnrealPackage.GameBuild.BuildName.DeadPool )
+                {
+#endif
+                    BaseStream.Position += 2; // null
+#if DEADPOOL
+                }
+#endif            
                 // Convert Byte Str to a String type
                 if( _MyEncoding == Encoding.BigEndianUnicode )
                 {
