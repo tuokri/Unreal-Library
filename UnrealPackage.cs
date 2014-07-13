@@ -259,6 +259,12 @@ namespace UELib
                 [Build( 130, 143, 56u, 59u, 0, 0 )]
                 Bioshock,
 
+                /// <summary>
+                /// 146/61447
+                /// </summary>
+                [Build( 146, 61447u )]
+                Advent,
+
                 // IrrationalGames - 129:143/027:059
 
                 /// <summary>
