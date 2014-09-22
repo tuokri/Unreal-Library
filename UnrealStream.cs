@@ -27,21 +27,21 @@ namespace UELib
         /// Reads the next bytes as characters either in ASCII or Unicode with prefix string length.
         /// </summary>
         /// <returns></returns>
-        string ReadText();
+        string ReadText( int size = 0 );
 
         /// <summary>
         /// Reads the next bytes as a index to an Object.
         /// </summary>
         /// <returns></returns>
-        int ReadObjectIndex();
-        UObject ReadObject();
+        int ReadObjectIndex( bool forceInt32 = false );
+        UObject ReadObject( bool forceInt32 = false );
         UObject ParseObject( int index );
 
         /// <summary>
         /// Reads the next bytes as a index to an NameTable.
         /// </summary>
         /// <returns></returns>
-        int ReadNameIndex();
+        int ReadNameIndex( bool forceInt32 = false );
         UName ReadNameReference();
         string ParseName( int index );
 
@@ -49,13 +49,15 @@ namespace UELib
         /// Reads the next bytes as a index to an NameTable.
         /// </summary>
         /// <returns></returns>
-        int ReadNameIndex( out int num );
+        int ReadNameIndex( out int num,  bool forceInt32 = false  );
 
         /// <summary>
         /// Reads the next bytes as a index.
         /// </summary>
         /// <returns></returns>
-        int ReadIndex();
+        int ReadIndex( bool forceInt32 = false );
+
+        int ReadSize();
 
         /// <summary>
         /// Reads the next 4 bytes as a float converted to an Unreal float format.
@@ -157,7 +159,7 @@ namespace UELib
             _MyEncoding = enc;
         }
 
-        public string ReadText()
+        public string ReadText( int presize = 0 )
         {
 #if DEBUG || BINARYMETADATA
             var lastPosition = _UnrealStream.Position;
@@ -167,12 +169,24 @@ namespace UELib
                 return ReadAnsi();
             }
 
-            int unfixedSize; var size = (unfixedSize = 
+            int unfixedSize, size;
+            if( presize == 0 )
+            {
+                size = (unfixedSize = 
 #if BIOSHOCK 
-                _UnrealStream.Package.Build == UnrealPackage.GameBuild.BuildName.Bioshock ? -ReadIndex() :
+                _UnrealStream.Package.Build == UnrealPackage.GameBuild.BuildName.Bioshock 
+                    ? -ReadIndex() 
+                    :
 #endif
-                ReadIndex()) < 0 ? -unfixedSize : unfixedSize;
-            System.Diagnostics.Debug.Assert( size < 1000000, "Dangerous string size detected! IT'S OVER 9000 THOUSAND!" );
+                ReadSize()) < 0 ? -unfixedSize : unfixedSize;
+                System.Diagnostics.Debug.Assert( size < 1000000, "Dangerous string size detected! IT'S OVER 9000 THOUSAND!" );
+            }
+            else
+            {
+                size = presize;
+                unfixedSize = size;
+            }
+
             if( unfixedSize > 0 ) // ANSI	 	
             {
                 var strBytes = new byte[size - 1];
@@ -246,9 +260,20 @@ namespace UELib
             return s;
         }
 
-        public int ReadIndex()
+        public int ReadSize()
         {
-            if( _Version >= UnrealPackage.VINDEXDEPRECATED )
+            return ReadIndex();
+        }
+
+        public int ReadIndex( bool forceInt32 = false )
+        {
+#if ADVENT
+            if( _Version >= 144 && _UnrealStream.Package.Build.Name == UnrealPackage.GameBuild.BuildName.Advent )
+            {
+                return ReadInt32();
+            }
+#endif
+            if( forceInt32 || _Version >= UnrealPackage.VINDEXDEPRECATED )
             {
                 return ReadInt32();
             }
@@ -291,12 +316,12 @@ namespace UELib
                 : ((index << 6) + (b0 & value));
         }
 
-        public long ReadNameIndex()
+        public long ReadNameIndex( bool forceInt32 = false )
         {
 #if DEBUG || BINARYMETADATA
             var lastPosition = _UnrealStream.Position;
 #endif
-            var index = ReadIndex();
+            var index = ReadIndex( forceInt32 );
             if( _Version >= UName.VNameNumbered 
 #if BIOSHOCK
                 || _UnrealStream.Package.Build == UnrealPackage.GameBuild.BuildName.Bioshock
@@ -312,12 +337,12 @@ namespace UELib
             return index;
         }
 
-        public int ReadNameIndex( out int num )
+        public int ReadNameIndex( out int num, bool forceInt32 = false )
         {
 #if DEBUG || BINARYMETADATA
             var lastPosition = _UnrealStream.Position;
 #endif
-            var index = ReadIndex();
+            var index = ReadIndex( forceInt32 );
             if( _UnrealStream.Version >= UName.VNameNumbered 
 #if BIOSHOCK
                 || _UnrealStream.Package.Build == UnrealPackage.GameBuild.BuildName.Bioshock 
@@ -458,6 +483,11 @@ namespace UELib
             return r;
         }
 
+        public int ReadSize()
+        {
+            return UR.ReadSize();
+        }
+
         /// <summary>
         /// Reads a float converted to a unreal float string format.
         /// 
@@ -562,9 +592,9 @@ namespace UELib
         /// Advances the position.
         /// </summary>
         /// <returns>the read string without the end \0 char</returns>
-        public string ReadText()
+        public string ReadText( int size = 0 )
         {
-            return UR.ReadText();
+            return UR.ReadText( size );
         }
 
         /// <summary>
@@ -589,23 +619,23 @@ namespace UELib
         /// Advances the position.
         /// </summary>
         /// <returns>the read index</returns>
-        public int ReadIndex()
+        public int ReadIndex( bool forceInt32 = false )
         {
-            return UR.ReadIndex();
+            return UR.ReadIndex( forceInt32 );
         }
 
         /// <summary>
         /// Same as ReadIndex, just a placeholder for UE3 compatibly.
         /// </summary>
         /// <returns></returns>
-        public int ReadObjectIndex()
+        public int ReadObjectIndex( bool forceInt32 = false )
         {
-            return UR.ReadIndex();
+            return UR.ReadIndex( forceInt32 );
         }
 
-        public UObject ReadObject()
+        public UObject ReadObject( bool forceInt32 = false )
         {
-            return Package.GetIndexObject( ReadObjectIndex() );
+            return Package.GetIndexObject( ReadObjectIndex( forceInt32 ) );
         }
 
         public UObject ParseObject( int index )
@@ -617,9 +647,9 @@ namespace UELib
         /// Same as ReadIndex except this one handles differently if the version is something above UE3.
         /// </summary>
         /// <returns>The read 64bit index casted to a 32bit index.</returns>
-        public int ReadNameIndex()
+        public int ReadNameIndex( bool forceInt32 = false )
         {
-            return (int)UR.ReadNameIndex();
+            return (int)UR.ReadNameIndex( forceInt32 );
         }
 
         public UName ReadNameReference()
@@ -636,9 +666,9 @@ namespace UELib
         /// Same as ReadIndex except this one handles differently if the version is something above UE3.
         /// </summary>
         /// <returns>The read 64bit index casted to a 32bit index.</returns>
-        public int ReadNameIndex( out int num )
+        public int ReadNameIndex( out int num, bool forceInt32 = false )
         {
-            return UR.ReadNameIndex( out num );
+            return UR.ReadNameIndex( out num, forceInt32 );
         }
 
         /// <summary>
@@ -735,6 +765,11 @@ namespace UELib
                 Array.Reverse( array, 0, r );
             }
             return r;
+        }
+
+        public int ReadSize()
+        {
+            return UR.ReadSize();
         }
 
         /// <summary>
@@ -841,9 +876,9 @@ namespace UELib
         /// Advances the position.
         /// </summary>
         /// <returns>the read string without the end \0 char</returns>
-        public string ReadText()
+        public string ReadText( int size = 0 )
         {
-            return UR.ReadText();
+            return UR.ReadText( size );
         }
 
         /// <summary>
@@ -868,23 +903,23 @@ namespace UELib
         /// Advances the position.
         /// </summary>
         /// <returns>the read index</returns>
-        public int ReadIndex()
+        public int ReadIndex( bool forceInt32 = false )
         {
-            return UR.ReadIndex();
+            return UR.ReadIndex( forceInt32 );
         }
 
         /// <summary>
         /// Same as ReadIndex, just a placeholder for UE3 compatibly.
         /// </summary>
         /// <returns></returns>
-        public int ReadObjectIndex()
+        public int ReadObjectIndex( bool forceInt32 = false )
         {
-            return UR.ReadIndex();
+            return UR.ReadIndex( forceInt32 );
         }
 
-        public UObject ReadObject()
+        public UObject ReadObject( bool forceInt32 = false )
         {
-            return Package.GetIndexObject( ReadObjectIndex() );
+            return Package.GetIndexObject( ReadObjectIndex( forceInt32 ) );
         }
 
         public UObject ParseObject( int index )
@@ -896,9 +931,9 @@ namespace UELib
         /// Same as ReadIndex except this one handles differently if the version is something above UE3.
         /// </summary>
         /// <returns>The read 64bit index casted to a 32bit index.</returns>
-        public int ReadNameIndex()
+        public int ReadNameIndex( bool forceInt32 = false )
         {
-            return (int)UR.ReadNameIndex();
+            return (int)UR.ReadNameIndex( forceInt32 );
         }
 
         public UName ReadNameReference()
@@ -915,9 +950,9 @@ namespace UELib
         /// Same as ReadIndex except this one handles differently if the version is something above UE3.
         /// </summary>
         /// <returns>The read 64bit index casted to a 32bit index.</returns>
-        public int ReadNameIndex( out int num )
+        public int ReadNameIndex( out int num, bool forceInt32 = false )
         {
-            return UR.ReadNameIndex( out num );
+            return UR.ReadNameIndex( out num, forceInt32 );
         }
 
         /// <summary>

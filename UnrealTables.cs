@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using System.Globalization;
 using System.IO;
 using System.Collections.Generic;
 using UELib.Core;
@@ -78,6 +79,10 @@ namespace UELib
     {
         private const string    None = "None";
         public const int        Numeric = 0;
+
+        /// <summary>
+        /// 343
+        /// </summary>
         internal const int      VNameNumbered = 343;
 
         private UNameTableItem  _NameItem;
@@ -106,7 +111,7 @@ namespace UELib
             Deserialize( stream );
         }
 
-        public UName( UNameTableItem nameItem, int num )
+        public UName( UNameTableItem nameItem, int num = Numeric )
         {
             _NameItem = nameItem;
             _Number = num;
@@ -195,10 +200,21 @@ namespace UELib
 
         private const int QWORDVersion = 141;
 
+        private static bool FlagsIsQWORD( IUnrealStream stream )
+        {
+#if ADVENT
+            if( stream.Package.Build.Name == UnrealPackage.GameBuild.BuildName.Advent )
+            {
+                return false;         
+            }
+#endif  
+            return stream.Version >= QWORDVersion;
+        }
+
         public void Deserialize( IUnrealStream stream )
         {
             Name = stream.ReadText();
-            Flags = stream.Version >= QWORDVersion ? stream.ReadUInt64() : stream.ReadUInt32();					
+            Flags = FlagsIsQWORD( stream ) ? stream.ReadUInt64() : stream.ReadUInt32();					
 #if DEOBFUSCATE
             // De-obfuscate names that contain unprintable characters!
             foreach( char c in Name )
@@ -216,15 +232,16 @@ namespace UELib
         {
             stream.WriteString( Name );
 
-            if( stream.Version < QWORDVersion )
-            {
-                // Writing UINT
-                stream.UW.Write( (uint)Flags );
-            }
-            else
+            if( FlagsIsQWORD( stream ) )
             {
                 // Writing ULONG
                 stream.UW.Write( Flags );
+                
+            }
+            else
+            {
+                // Writing UINT
+                stream.UW.Write( (uint)Flags );
             }
         }
 
@@ -413,15 +430,28 @@ namespace UELib
         {
             ClassIndex 		= stream.ReadObjectIndex();
             SuperIndex 		= stream.ReadObjectIndex();
-            OuterIndex 		= stream.ReadInt32(); // ObjectIndex, though always written as 32bits regardless of build.
+            OuterIndex      = 
+#if ADVENT
+                stream.Package.Build == UnrealPackage.GameBuild.BuildName.Advent && stream.Version >= 141  
+                ? stream.ReadInt16() : 
+#endif
+                stream.ReadObjectIndex( true );
 #if BIOSHOCK
             if( stream.Package.Build == UnrealPackage.GameBuild.BuildName.Bioshock && stream.Version >= 132 )
             {
                 stream.Skip( sizeof(int) );
             }
 #endif
-            ObjectName 	= stream.ReadNameReference();	
-            
+            var objectIndex = stream.ReadNameIndex();
+#if ADVENT
+            if( stream.Package.Build == UnrealPackage.GameBuild.BuildName.Advent )
+            {
+                ClassIndex = (short)ClassIndex;
+                SuperIndex = (short)SuperIndex;
+                objectIndex = (short)objectIndex;
+            }
+#endif
+            ObjectName = new UName( stream.Package.Names[objectIndex] );
             if( stream.Version >= VArchetype )
             {
                 ArchetypeIndex = stream.ReadInt32();
@@ -432,6 +462,9 @@ namespace UELib
             if( stream.Version >= VObjectFlagsToULONG 
 #if BIOSHOCK
                 || (stream.Package.Build == UnrealPackage.GameBuild.BuildName.Bioshock && stream.Package.LicenseeVersion >= 40) 
+#endif
+#if ADVENT
+                || stream.Package.Build == UnrealPackage.GameBuild.BuildName.Advent
 #endif
                 )
             {
@@ -563,7 +596,14 @@ namespace UELib
             PackageName 		= stream.ReadNameReference();
             _ClassName 			= stream.ReadNameReference();
              ClassIndex         = (int)_ClassName;
-            OuterIndex 			= stream.ReadInt32(); // ObjectIndex, though always written as 32bits regardless of build.
+#if ADVENT
+            if( stream.Package.Build.Name == UnrealPackage.GameBuild.BuildName.Advent && stream.Version >= 141 )
+            {
+                OuterIndex = stream.ReadInt16();;
+            }
+            else 
+#endif
+                OuterIndex 			= stream.ReadInt32(); // ObjectIndex, though always written as 32bits regardless of build
             ObjectName 		    = stream.ReadNameReference();
         }
 
