@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using UELib.Annotations;
 
@@ -63,7 +64,13 @@ namespace UELib
         /// <param name="size">Size in bytes of the field</param>
         public void AddField(string name, object tag, long position, long size)
         {
-            Debug.Assert(size > 0, $"Size of field {name} at {position} cannot be less than 1");
+            // Debug.Assert(size > 0, $"Size of field {name} at {position} cannot be less than 1");
+            if (size <= 0)
+            {
+                Console.WriteLine($"Size of field {name} at {position} cannot be less than 1");
+                // throw new ArgumentException();
+            }
+            
             Fields.Push
             (
                 new BinaryField

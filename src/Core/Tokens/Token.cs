@@ -175,9 +175,9 @@ namespace UELib.Core
                 {
                     return
                         $"\r\nInstantiated Type: {GetType().Name}" +
-                        $"\r\nSerialized OpCode: {OpCode:X2}h" +
-                        $"\r\nOffset: {PropertyDisplay.FormatOffset(Position)}" +
-                        $"\r\nSize: {PropertyDisplay.FormatOffset(Size)}";
+                        $"\r\nSerialized OpCode: {OpCode:X2}h";
+                    // $"\r\nOffset: {PropertyDisplay.FormatOffset(Position)}" +
+                    // $"\r\nSize: {PropertyDisplay.FormatOffset(Size)}";
                 }
             }
 
