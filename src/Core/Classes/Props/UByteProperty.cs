@@ -32,7 +32,6 @@ namespace UELib.Core
 
         public override string GetFriendlyType()
         {
-<<<<<<< HEAD
             if (Enum != null)
             {
                 // The compiler doesn't understand any non-UClass qualified identifiers.
@@ -41,11 +40,6 @@ namespace UELib.Core
                     : Enum.Name;
             }
             return "byte";
-=======
-            return Enum != null
-                ? Enum.GetOuterGroup()
-                : "byte";
->>>>>>> 7f579d6 (Make develop branch compile)
         }
     }
 }
